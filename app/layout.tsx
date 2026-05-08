@@ -1,32 +1,16 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { ThemeInit } from '@/components/theme-init'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Summer Level-Up Tracker',
+  title: 'Project Refactor',
   description: '个人每日习惯追踪仪表板',
   generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
 }
 
 export default function RootLayout({
@@ -35,8 +19,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="zh-CN" className="bg-background" suppressHydrationWarning>
+    <html lang="zh-CN" className="dark bg-background" suppressHydrationWarning>
       <body className="font-sans antialiased h-screen overflow-hidden bg-background">
+        <ThemeInit />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
