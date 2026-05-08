@@ -39,11 +39,11 @@ export interface DailyScore {
 }
 
 export const DEFAULT_TASKS = [
-  { name: '编程训练 (手写 JS/React/Python/SQL)', points: 50, description: '每天练习编程技能' },
-  { name: '健身 (力量训练 / 有氧)', points: 30, description: '保持身体健康' },
-  { name: '健康饮食 (自己做饭 / 无糖)', points: 20, description: '健康饮食习惯' },
-  { name: '摄影 / 看电影散步', points: 20, description: '放松和创意活动' },
-  { name: '吉他练习', points: 15, description: '音乐技能提升' },
-  { name: 'Duolingo (30分钟)', points: 15, description: '语言学习' },
-  { name: '清理游戏日常', points: 10, description: '游戏任务' },
+  { name: '编程训练 (手写 JS/React/Python/SQL)', points: 30, description: '每天练习编程技能' },
+  { name: '健身 (力量训练 / 有氧)', points: 20, description: '保持身体健康' },
+  { name: '健康饮食 (自己做饭 / 无糖)', points: 15, description: '健康饮食习惯' },
+  { name: '摄影 / 看电影散步', points: 10, description: '放松和创意活动' },
+  { name: '吉他练习', points: 10, description: '音乐技能提升' },
+  { name: 'Duolingo (30分钟)', points: 10, description: '语言学习' },
+  { name: '清理游戏日常', points: 5, description: '游戏任务' },
 ]
