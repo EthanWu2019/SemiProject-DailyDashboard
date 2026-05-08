@@ -3,23 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { DEFAULT_TASKS, type Task, type DailyScore } from "./types"
-
-// 获取芝加哥时间的 Date 对象（用于服务端渲染日期字符串）
-export function getChicagoDate(): Date {
-  const now = new Date()
-  // 转换为芝加哥时间
-  const chicagoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }))
-  // 如果还没到凌晨3点，算作前一天
-  if (chicagoTime.getHours() < 3) {
-    chicagoTime.setDate(chicagoTime.getDate() - 1)
-  }
-  return chicagoTime
-}
-
-// 获取芝加哥时间的日期字符串 (凌晨3点刷新)
-function getChicagoDateStr(): string {
-  return getChicagoDate().toISOString().split("T")[0]
-}
+import { getChicagoDateStr } from "./utils"
 
 // 获取本周一的日期（芝加哥时间）
 function getWeekStart() {

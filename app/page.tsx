@@ -1,5 +1,6 @@
 import { Dashboard } from "@/components/dashboard"
-import { getTodayTasks, getRelapseTracker, getTaskTemplates, getHistoryScores, getChicagoDate } from "@/lib/actions"
+import { getTodayTasks, getRelapseTracker, getTaskTemplates, getHistoryScores } from "@/lib/actions"
+import { getChicagoDate } from "@/lib/utils"
 
 export default async function Home() {
   const chicagoDate = getChicagoDate()
