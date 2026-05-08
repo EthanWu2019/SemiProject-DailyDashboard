@@ -1,27 +1,37 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import type { SupabaseClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
-import { DEFAULT_TASKS } from "./types"
+import { DEFAULT_TASKS, type Task, type DailyScore } from "./types"
 
-// 获取今天的日期字符串 (YYYY-MM-DD)
-function getTodayDate() {
-  return new Date().toISOString().split("T")[0]
+// 获取芝加哥时间的日期 (凌晨3点刷新)
+function getChicagoDate() {
+  const now = new Date()
+  // 转换为芝加哥时间
+  const chicagoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }))
+  // 如果还没到凌晨3点，算作前一天
+  if (chicagoTime.getHours() < 3) {
+    chicagoTime.setDate(chicagoTime.getDate() - 1)
+  }
+  return chicagoTime.toISOString().split("T")[0]
 }
 
-// 获取本周一的日期
+// 获取本周一的日期（芝加哥时间）
 function getWeekStart() {
   const now = new Date()
-  const day = now.getDay()
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-  return new Date(now.setDate(diff)).toISOString().split("T")[0]
+  const chicagoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }))
+  if (chicagoTime.getHours() < 3) {
+    chicagoTime.setDate(chicagoTime.getDate() - 1)
+  }
+  const day = chicagoTime.getDay()
+  const diff = chicagoTime.getDate() - day + (day === 0 ? -6 : 1)
+  return new Date(chicagoTime.setDate(diff)).toISOString().split("T")[0]
 }
 
 // 获取今日任务
-export async function getTodayTasks() {
+export async function getTodayTasks(): Promise<Task[]> {
   const supabase = await createClient()
-  const today = getTodayDate()
+  const today = getChicagoDate()
   
   const { data, error } = await supabase
     .from("tasks")
@@ -34,30 +44,189 @@ export async function getTodayTasks() {
     return []
   }
   
-  // 如果今天没有任务，创建默认任务
+  // 如果今天没有任务，从模板创建
   if (!data || data.length === 0) {
-    const defaultTasks = DEFAULT_TASKS.map((task, index) => ({
-      name: task.name,
-      points: task.points,
-      completed: false,
-      sort_order: index,
-      date: today,
-    }))
+    // 获取所有每日任务模板
+    const { data: templates } = await supabase
+      .from("task_templates")
+      .select("*")
+      .eq("task_type", "daily")
+      .order("sort_order", { ascending: true })
     
-    const { data: newTasks, error: insertError } = await supabase
-      .from("tasks")
-      .insert(defaultTasks)
-      .select()
+    // 获取今天需要完成的一次性任务
+    const { data: onceTasks } = await supabase
+      .from("task_templates")
+      .select("*")
+      .eq("task_type", "once")
+      .eq("target_date", today)
     
-    if (insertError) {
-      console.error("Error creating default tasks:", insertError)
-      return []
+    let tasksToCreate: any[] = []
+    
+    if (templates && templates.length > 0) {
+      tasksToCreate = templates.map((t, index) => ({
+        name: t.name,
+        description: t.description,
+        points: t.points,
+        completed: false,
+        sort_order: index,
+        date: today,
+        task_type: "daily",
+        target_date: null,
+      }))
+    } else {
+      // 使用默认任务
+      tasksToCreate = DEFAULT_TASKS.map((task, index) => ({
+        name: task.name,
+        description: task.description,
+        points: task.points,
+        completed: false,
+        sort_order: index,
+        date: today,
+        task_type: "daily",
+        target_date: null,
+      }))
     }
     
-    return newTasks || []
+    // 添加一次性任务
+    if (onceTasks && onceTasks.length > 0) {
+      const onceTasksToAdd = onceTasks.map((t, index) => ({
+        name: t.name,
+        description: t.description,
+        points: t.points,
+        completed: false,
+        sort_order: tasksToCreate.length + index,
+        date: today,
+        task_type: "once",
+        target_date: t.target_date,
+      }))
+      tasksToCreate = [...tasksToCreate, ...onceTasksToAdd]
+    }
+    
+    if (tasksToCreate.length > 0) {
+      const { data: newTasks, error: insertError } = await supabase
+        .from("tasks")
+        .insert(tasksToCreate)
+        .select()
+      
+      if (insertError) {
+        console.error("Error creating tasks:", insertError)
+        return []
+      }
+      
+      return newTasks || []
+    }
   }
   
-  return data
+  return data || []
+}
+
+// 获取任务模板（用于任务管理界面）
+export async function getTaskTemplates() {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from("task_templates")
+    .select("*")
+    .order("task_type", { ascending: true })
+    .order("sort_order", { ascending: true })
+  
+  if (error) {
+    console.error("Error fetching task templates:", error)
+    return []
+  }
+  
+  return data || []
+}
+
+// 创建任务模板
+export async function createTaskTemplate(
+  name: string,
+  description: string | null,
+  points: number,
+  taskType: "daily" | "once",
+  targetDate: string | null
+) {
+  const supabase = await createClient()
+  
+  // 获取当前最大排序
+  const { data: existingTemplates } = await supabase
+    .from("task_templates")
+    .select("sort_order")
+    .eq("task_type", taskType)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+  
+  const maxOrder = existingTemplates?.[0]?.sort_order ?? -1
+  
+  const { data, error } = await supabase
+    .from("task_templates")
+    .insert({
+      name,
+      description,
+      points,
+      task_type: taskType,
+      target_date: targetDate,
+      sort_order: maxOrder + 1,
+    })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error("Error creating task template:", error)
+    return { success: false, data: null }
+  }
+  
+  revalidatePath("/")
+  return { success: true, data }
+}
+
+// 更新任务模板
+export async function updateTaskTemplate(
+  id: string,
+  name: string,
+  description: string | null,
+  points: number,
+  taskType: "daily" | "once",
+  targetDate: string | null
+) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from("task_templates")
+    .update({
+      name,
+      description,
+      points,
+      task_type: taskType,
+      target_date: targetDate,
+    })
+    .eq("id", id)
+  
+  if (error) {
+    console.error("Error updating task template:", error)
+    return { success: false }
+  }
+  
+  revalidatePath("/")
+  return { success: true }
+}
+
+// 删除任务模板
+export async function deleteTaskTemplate(id: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from("task_templates")
+    .delete()
+    .eq("id", id)
+  
+  if (error) {
+    console.error("Error deleting task template:", error)
+    return { success: false }
+  }
+  
+  revalidatePath("/")
+  return { success: true }
 }
 
 // 获取自控追踪器
@@ -75,7 +244,6 @@ export async function getRelapseTracker() {
     console.error("Error fetching relapse tracker:", error)
   }
   
-  // 如果本周没有记录，创建新记录
   if (!data) {
     const { data: newTracker, error: insertError } = await supabase
       .from("relapse_tracker")
@@ -112,78 +280,6 @@ export async function toggleTask(taskId: string, completed: boolean) {
   return { success: true }
 }
 
-// 添加新任务
-export async function addTask(name: string, points: number) {
-  const supabase = await createClient()
-  const today = getTodayDate()
-  
-  // 获取当前最大排序
-  const { data: existingTasks } = await supabase
-    .from("tasks")
-    .select("sort_order")
-    .eq("date", today)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-  
-  const maxOrder = existingTasks?.[0]?.sort_order ?? -1
-  
-  const { data, error } = await supabase
-    .from("tasks")
-    .insert({
-      name,
-      points,
-      completed: false,
-      sort_order: maxOrder + 1,
-      date: today,
-    })
-    .select()
-    .single()
-  
-  if (error) {
-    console.error("Error adding task:", error)
-    return { success: false, data: null }
-  }
-  
-  revalidatePath("/")
-  return { success: true, data }
-}
-
-// 更新任务
-export async function updateTask(taskId: string, name: string, points: number) {
-  const supabase = await createClient()
-  
-  const { error } = await supabase
-    .from("tasks")
-    .update({ name, points, updated_at: new Date().toISOString() })
-    .eq("id", taskId)
-  
-  if (error) {
-    console.error("Error updating task:", error)
-    return { success: false }
-  }
-  
-  revalidatePath("/")
-  return { success: true }
-}
-
-// 删除任务
-export async function deleteTask(taskId: string) {
-  const supabase = await createClient()
-  
-  const { error } = await supabase
-    .from("tasks")
-    .delete()
-    .eq("id", taskId)
-  
-  if (error) {
-    console.error("Error deleting task:", error)
-    return { success: false }
-  }
-  
-  revalidatePath("/")
-  return { success: true }
-}
-
 // 更新自控计数
 export async function updateRelapseCount(trackerId: string, count: number) {
   const supabase = await createClient()
@@ -205,7 +301,7 @@ export async function updateRelapseCount(trackerId: string, count: number) {
 // 重置今日所有任务
 export async function resetAllTasks() {
   const supabase = await createClient()
-  const today = getTodayDate()
+  const today = getChicagoDate()
   
   const { error } = await supabase
     .from("tasks")
@@ -219,4 +315,47 @@ export async function resetAllTasks() {
   
   revalidatePath("/")
   return { success: true }
+}
+
+// 获取历史得分数据（用于日历视图）
+export async function getHistoryScores(year: number): Promise<DailyScore[]> {
+  const supabase = await createClient()
+  
+  const startDate = `${year}-01-01`
+  const endDate = `${year}-12-31`
+  
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("date, points, completed")
+    .gte("date", startDate)
+    .lte("date", endDate)
+  
+  if (error) {
+    console.error("Error fetching history:", error)
+    return []
+  }
+  
+  // 按日期聚合
+  const scoreMap = new Map<string, { total: number; earned: number }>()
+  
+  data?.forEach((task) => {
+    const existing = scoreMap.get(task.date) || { total: 0, earned: 0 }
+    existing.total += task.points
+    if (task.completed) {
+      existing.earned += task.points
+    }
+    scoreMap.set(task.date, existing)
+  })
+  
+  const scores: DailyScore[] = []
+  scoreMap.forEach((value, date) => {
+    scores.push({
+      date,
+      total_points: value.total,
+      earned_points: value.earned,
+      percentage: value.total > 0 ? Math.round((value.earned / value.total) * 100) : 0,
+    })
+  })
+  
+  return scores.sort((a, b) => a.date.localeCompare(b.date))
 }
