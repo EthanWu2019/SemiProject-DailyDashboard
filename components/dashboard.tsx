@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useMemo, useState, useTransition, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProgressRing } from "@/components/progress-ring"
-import { MoreHorizontal, Plus, Pencil, Trash2, RotateCcw, Minus, AlertTriangle, Target, ListTodo, Settings, Calendar, RefreshCw } from "lucide-react"
+import { MoreHorizontal, Plus, Pencil, Trash2, RotateCcw, Minus, AlertTriangle, Target, ListTodo, Settings, Calendar, RefreshCw, Quote } from "lucide-react"
 import { 
   toggleTask, 
   updateRelapseCount, 
@@ -129,14 +129,35 @@ export function Dashboard({
     targetDate: ""
   })
 
-  // 计算分数和进度
-  const { totalPoints, earnedPoints, penalty, progress } = useMemo(() => {
+  // 励志金句
+  const [quote, setQuote] = useState({ content: "", from: "" })
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false)
+
+  const fetchQuote = useCallback(async () => {
+    setIsLoadingQuote(true)
+    try {
+      const res = await fetch("https://v1.hitokoto.cn/?c=d&c=i&c=k&encode=json")
+      const data = await res.json()
+      setQuote({ content: data.hitokoto, from: data.from || data.from_who || "" })
+    } catch {
+      setQuote({ content: "每一天都是新的开始", from: "" })
+    }
+    setIsLoadingQuote(false)
+  }, [])
+
+  useEffect(() => {
+    fetchQuote()
+  }, [fetchQuote])
+
+  // 计算分数和进度 - 满分固定为100，可以溢出
+  const { totalPoints, earnedPoints, penalty, progress, finalScore } = useMemo(() => {
     const total = tasks.reduce((sum, t) => sum + t.points, 0)
     const earned = tasks.filter(t => t.completed).reduce((sum, t) => sum + t.points, 0)
     const pen = calculatePenalty(tracker.count)
-    const finalScore = Math.max(0, earned - pen)
-    const prog = total > 0 ? (finalScore / total) * 100 : 0
-    return { totalPoints: total, earnedPoints: earned, penalty: pen, progress: prog }
+    const final = Math.max(0, earned - pen)
+    // 满分固定为100，进度最高100%
+    const prog = Math.min(100, final)
+    return { totalPoints: total, earnedPoints: earned, penalty: pen, progress: prog, finalScore: final }
   }, [tasks, tracker.count])
 
   const calendarData = useMemo(() => generateCalendarData(currentYear, scores), [scores, currentYear])
@@ -289,23 +310,31 @@ export function Dashboard({
               今日进度
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col items-center justify-center gap-4">
-            <ProgressRing progress={progress} size={140} strokeWidth={10} />
-            
-            <div className="text-center space-y-1">
-              <div className="text-2xl font-bold">
-                {Math.max(0, earnedPoints - penalty)} <span className="text-sm font-normal text-muted-foreground">/ {totalPoints}</span>
-              </div>
-              {penalty > 0 && (
-                <div className="text-xs text-destructive">
-                  (已扣除 {penalty} 分惩罚)
+          <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden">
+            {/* 进度环 */}
+            <div className="flex flex-col items-center gap-2">
+              <ProgressRing progress={progress} size={120} strokeWidth={8} />
+              
+              <div className="text-center space-y-0.5">
+                <div className="text-xl font-bold">
+                  {finalScore} <span className="text-sm font-normal text-muted-foreground">/ 100</span>
                 </div>
-              )}
+                {finalScore > 100 && (
+                  <div className="text-xs text-primary">
+                    溢出 +{finalScore - 100} 分
+                  </div>
+                )}
+                {penalty > 0 && (
+                  <div className="text-xs text-destructive">
+                    (已扣除 {penalty} 分惩罚)
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 自律追踪器 */}
-            <div className="w-full border-t pt-4 mt-2">
-              <div className="flex items-center justify-between mb-2">
+            <div className="w-full border-t pt-3">
+              <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-orange-500" />
                   <span className="text-sm font-medium">本周自律</span>
@@ -314,7 +343,7 @@ export function Dashboard({
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    className="h-7 w-7"
+                    className="h-6 w-6"
                     onClick={() => handleRelapseChange(-1)}
                     disabled={isPending || tracker.count === 0}
                   >
@@ -326,7 +355,7 @@ export function Dashboard({
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    className="h-7 w-7"
+                    className="h-6 w-6"
                     onClick={() => handleRelapseChange(1)}
                     disabled={isPending}
                   >
@@ -337,6 +366,33 @@ export function Dashboard({
               <p className="text-xs text-muted-foreground">
                 0-2次安全，第3次-30分，之后每次-50分
               </p>
+            </div>
+
+            {/* 励志金句 */}
+            <div className="w-full border-t pt-3 mt-auto">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Quote className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">每日一言</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={fetchQuote}
+                  disabled={isLoadingQuote}
+                >
+                  <RefreshCw className={`h-3 w-3 ${isLoadingQuote ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+              <div className="text-sm text-muted-foreground italic leading-relaxed">
+                {quote.content || "加载中..."}
+              </div>
+              {quote.from && (
+                <div className="text-xs text-muted-foreground/70 mt-1 text-right">
+                  —— {quote.from}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
