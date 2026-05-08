@@ -1,11 +1,22 @@
 import { Dashboard } from "@/components/dashboard"
-import { getTodayTasks, getRelapseTracker } from "@/lib/actions"
+import { getTodayTasks, getRelapseTracker, getTaskTemplates, getHistoryScores } from "@/lib/actions"
 
 export default async function Home() {
-  const [tasks, relapseTracker] = await Promise.all([
+  const currentYear = new Date().getFullYear()
+  
+  const [tasks, relapseTracker, templates, historyScores] = await Promise.all([
     getTodayTasks(),
     getRelapseTracker(),
+    getTaskTemplates(),
+    getHistoryScores(currentYear),
   ])
 
-  return <Dashboard tasks={tasks} relapseTracker={relapseTracker} />
+  return (
+    <Dashboard 
+      tasks={tasks} 
+      relapseTracker={relapseTracker} 
+      templates={templates}
+      historyScores={historyScores}
+    />
+  )
 }
