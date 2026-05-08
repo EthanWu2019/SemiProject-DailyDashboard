@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 import { DEFAULT_TASKS } from "./types"
 
