@@ -23,6 +23,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProgressRing } from "@/components/progress-ring"
 import { MiniRing } from "@/components/mini-ring"
+import { Confetti } from "@/components/confetti"
 import { MoreHorizontal, Plus, Pencil, Trash2, RotateCcw, Minus, AlertTriangle, Target, ListTodo, Settings, Calendar, RefreshCw, Quote, BarChart3 } from "lucide-react"
 import { 
   toggleTask, 
@@ -337,13 +338,16 @@ export function Dashboard({
 
   return (
     <div className="h-screen flex flex-col p-4 md:p-6 max-w-7xl mx-auto">
+      {/* 100%进度飘带效果 */}
+      <Confetti active={finalScore >= 100} />
+
       {/* 顶部栏 */}
       <header className="flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-4">
           <img 
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/FullLogo_NoBuffer-Photoroom-iq5y9MePI66aeBEGDe6R9qsbM5zGNb.png" 
             alt="Project Refactor" 
-            className="h-8 dark:invert"
+            className="h-12 dark:invert"
           />
           <p className="text-sm text-muted-foreground">
             {todayStr} · 距离开学还有 <span className="font-medium text-primary">{timeProgress.daysUntilSchool}</span> 天
@@ -387,7 +391,7 @@ export function Dashboard({
             </div>
 
             {/* 仪表盘小圆环组 */}
-            <div className="w-full border-t pt-3">
+            <div className="w-full pt-2">
               <div className="grid grid-cols-3 gap-2">
                 <MiniRing 
                   progress={timeProgress.summerProgress} 
