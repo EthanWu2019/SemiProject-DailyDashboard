@@ -38,6 +38,28 @@ export interface DailyScore {
   percentage: number
 }
 
+export interface DailyRecord {
+  id: string
+  date: string
+  total_points: number
+  earned_points: number
+  relapse_count: number
+  penalty: number
+  final_score: number
+  created_at: string
+}
+
+export interface Statistics {
+  weeklyAvgProgress: number
+  monthlyAvgProgress: number
+  totalRelapseCount: number
+  monthlyAvgRelapsePerWeek: number
+  summerAvgRelapsePerWeek: number
+  totalDaysTracked: number
+  perfectDays: number
+  avgDailyScore: number
+}
+
 export const DEFAULT_TASKS = [
   { name: '编程训练 (手写 JS/React/Python/SQL)', points: 30, description: '每天练习编程技能' },
   { name: '健身 (力量训练 / 有氧)', points: 20, description: '保持身体健康' },

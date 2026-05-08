@@ -23,7 +23,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProgressRing } from "@/components/progress-ring"
 import { MiniRing } from "@/components/mini-ring"
-import { MoreHorizontal, Plus, Pencil, Trash2, RotateCcw, Minus, AlertTriangle, Target, ListTodo, Settings, Calendar, RefreshCw, Quote } from "lucide-react"
+import { MoreHorizontal, Plus, Pencil, Trash2, RotateCcw, Minus, AlertTriangle, Target, ListTodo, Settings, Calendar, RefreshCw, Quote, BarChart3 } from "lucide-react"
 import { 
   toggleTask, 
   updateRelapseCount, 
@@ -33,13 +33,14 @@ import {
   deleteTaskTemplate,
   syncTodayTasks,
 } from "@/lib/actions"
-import type { Task, RelapseTracker, TaskTemplate, DailyScore } from "@/lib/types"
+import type { Task, RelapseTracker, TaskTemplate, DailyScore, Statistics } from "@/lib/types"
 
 interface DashboardProps {
   tasks: Task[]
   relapseTracker: RelapseTracker
   templates: TaskTemplate[]
   historyScores: DailyScore[]
+  statistics: Statistics
   todayStr: string
   currentYear: number
 }
@@ -102,13 +103,14 @@ function generateCalendarData(year: number, scores: DailyScore[] = []) {
   return weeks
 }
 
-type ViewMode = "today" | "manage" | "calendar"
+type ViewMode = "today" | "manage" | "calendar" | "stats"
 
 export function Dashboard({ 
   tasks: initialTasks, 
   relapseTracker: initialTracker,
   templates: initialTemplates,
   historyScores: initialScores,
+  statistics,
   todayStr,
   currentYear,
 }: DashboardProps) {
@@ -348,7 +350,7 @@ export function Dashboard({
         </div>
       </header>
 
-      {/* 主内容区：左侧进度常驻 + 右侧切换 */}
+      {/* 主内容��：左侧进度常驻 + 右侧切换 */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
         {/* 左侧统计面板 - 常驻 */}
         <Card className="md:col-span-1 flex flex-col">
@@ -501,6 +503,15 @@ export function Dashboard({
                 >
                   <Calendar className="h-4 w-4 mr-1" />
                   历史日历
+                </Button>
+                <Button
+                  variant={viewMode === "stats" ? "default" : "ghost"}
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setViewMode("stats")}
+                >
+                  <BarChart3 className="h-4 w-4 mr-1" />
+                  数据统计
                 </Button>
               </div>
               
@@ -723,6 +734,73 @@ export function Dashboard({
                     <div className="w-3 h-3 rounded-sm bg-primary" />
                   </div>
                   <span>多</span>
+                </div>
+              </div>
+            )}
+
+            {/* 数据统计视图 */}
+            {viewMode === "stats" && (
+              <div className="space-y-6">
+                {/* 进度统计 */}
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">进度统计</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-primary">{statistics.weeklyAvgProgress}%</div>
+                      <div className="text-xs text-muted-foreground">本周平均进度</div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-primary">{statistics.monthlyAvgProgress}%</div>
+                      <div className="text-xs text-muted-foreground">本月平均进度</div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <div className="text-2xl font-bold">{statistics.avgDailyScore}</div>
+                      <div className="text-xs text-muted-foreground">平均每日得分</div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-green-500">{statistics.perfectDays}</div>
+                      <div className="text-xs text-muted-foreground">完美日 (100+分)</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 鹿管统计 */}
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">鹿管统计</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-orange-500">{statistics.totalRelapseCount}</div>
+                      <div className="text-xs text-muted-foreground">鹿管总次数</div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <div className="text-2xl font-bold">{statistics.monthlyAvgRelapsePerWeek}</div>
+                      <div className="text-xs text-muted-foreground">本月周均鹿管</div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <div className="text-2xl font-bold">{statistics.summerAvgRelapsePerWeek}</div>
+                      <div className="text-xs text-muted-foreground">假期周均鹿管</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 追踪信息 */}
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">追踪信息</h3>
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm text-muted-foreground">已追踪天数</div>
+                        <div className="text-xl font-bold">{statistics.totalDaysTracked} 天</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">数据起始日</div>
+                        <div className="text-xl font-bold">2025-05-07</div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      * 统计数据不包含今天（今天尚未结算）
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

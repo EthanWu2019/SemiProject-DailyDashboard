@@ -1,5 +1,5 @@
 import { Dashboard } from "@/components/dashboard"
-import { getTodayTasks, getRelapseTracker, getTaskTemplates, getHistoryScores } from "@/lib/actions"
+import { getTodayTasks, getRelapseTracker, getTaskTemplates, getHistoryScores, getStatistics, checkAndSettlePreviousDay } from "@/lib/actions"
 import { getChicagoDate } from "@/lib/utils"
 
 export default async function Home() {
@@ -14,11 +14,15 @@ export default async function Home() {
     timeZone: "America/Chicago"
   })
   
-  const [tasks, relapseTracker, templates, historyScores] = await Promise.all([
+  // 检查并结算前一天
+  await checkAndSettlePreviousDay()
+  
+  const [tasks, relapseTracker, templates, historyScores, statistics] = await Promise.all([
     getTodayTasks(),
     getRelapseTracker(),
     getTaskTemplates(),
     getHistoryScores(currentYear),
+    getStatistics(),
   ])
 
   return (
@@ -27,6 +31,7 @@ export default async function Home() {
       relapseTracker={relapseTracker} 
       templates={templates}
       historyScores={historyScores}
+      statistics={statistics}
       todayStr={todayStr}
       currentYear={currentYear}
     />
