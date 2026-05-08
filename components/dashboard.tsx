@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProgressRing } from "@/components/progress-ring"
+import { MiniRing } from "@/components/mini-ring"
 import { MoreHorizontal, Plus, Pencil, Trash2, RotateCcw, Minus, AlertTriangle, Target, ListTodo, Settings, Calendar, RefreshCw, Quote } from "lucide-react"
 import { 
   toggleTask, 
@@ -162,6 +163,51 @@ export function Dashboard({
 
   const calendarData = useMemo(() => generateCalendarData(currentYear, scores), [scores, currentYear])
 
+  // 时间进度计算
+  const timeProgress = useMemo(() => {
+    const now = new Date()
+    const chicagoNow = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }))
+    
+    // 假期开始：5月6日，结束：8月24日
+    const summerStart = new Date(currentYear, 4, 6) // 5月6日
+    const summerEnd = new Date(currentYear, 7, 24)   // 8月24日
+    const totalSummerDays = Math.ceil((summerEnd.getTime() - summerStart.getTime()) / (1000 * 60 * 60 * 24))
+    const elapsedSummerDays = Math.max(0, Math.ceil((chicagoNow.getTime() - summerStart.getTime()) / (1000 * 60 * 60 * 24)))
+    const daysUntilSchool = Math.max(0, Math.ceil((summerEnd.getTime() - chicagoNow.getTime()) / (1000 * 60 * 60 * 24)))
+    const summerProgress = Math.min(100, (elapsedSummerDays / totalSummerDays) * 100)
+    
+    // 今日剩余（芝加哥时间，凌晨3点算新一天开始）
+    let dayStart = new Date(chicagoNow)
+    dayStart.setHours(3, 0, 0, 0)
+    if (chicagoNow.getHours() < 3) {
+      dayStart.setDate(dayStart.getDate() - 1)
+    }
+    const dayEnd = new Date(dayStart)
+    dayEnd.setDate(dayEnd.getDate() + 1)
+    const totalDayMs = dayEnd.getTime() - dayStart.getTime()
+    const elapsedDayMs = chicagoNow.getTime() - dayStart.getTime()
+    const dayRemaining = Math.max(0, 100 - (elapsedDayMs / totalDayMs) * 100)
+    
+    // 本周剩余（周一为开始，周日为结束）
+    const dayOfWeek = chicagoNow.getDay() // 0=周日, 1=周一...
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    const weekStart = new Date(chicagoNow)
+    weekStart.setDate(chicagoNow.getDate() - daysFromMonday)
+    weekStart.setHours(3, 0, 0, 0)
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekEnd.getDate() + 7)
+    const totalWeekMs = weekEnd.getTime() - weekStart.getTime()
+    const elapsedWeekMs = chicagoNow.getTime() - weekStart.getTime()
+    const weekRemaining = Math.max(0, 100 - (elapsedWeekMs / totalWeekMs) * 100)
+    
+    return {
+      daysUntilSchool,
+      summerProgress,
+      dayRemaining,
+      weekRemaining,
+    }
+  }, [currentYear])
+
   const handleToggle = (task: Task) => {
     const newCompleted = !task.completed
     setTasks(prev => prev.map(t => 
@@ -293,7 +339,9 @@ export function Dashboard({
       <header className="flex items-center justify-between mb-4 flex-shrink-0">
         <div>
           <h1 className="text-xl font-bold text-foreground">Summer Level-Up</h1>
-          <p className="text-sm text-muted-foreground">{todayStr}</p>
+          <p className="text-sm text-muted-foreground">
+            {todayStr} · 距离开学还有 <span className="font-medium text-primary">{timeProgress.daysUntilSchool}</span> 天
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -311,13 +359,13 @@ export function Dashboard({
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden">
-            {/* 进度环 */}
-            <div className="flex flex-col items-center gap-2">
-              <ProgressRing progress={progress} size={120} strokeWidth={8} />
+            {/* 主进度环 */}
+            <div className="flex flex-col items-center gap-1">
+              <ProgressRing progress={progress} size={100} strokeWidth={6} />
               
-              <div className="text-center space-y-0.5">
-                <div className="text-xl font-bold">
-                  {finalScore} <span className="text-sm font-normal text-muted-foreground">/ 100</span>
+              <div className="text-center">
+                <div className="text-lg font-bold">
+                  {finalScore} <span className="text-xs font-normal text-muted-foreground">/ 100</span>
                 </div>
                 {finalScore > 100 && (
                   <div className="text-xs text-primary">
@@ -329,6 +377,30 @@ export function Dashboard({
                     (已扣除 {penalty} 分惩罚)
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* 仪表盘小圆环组 */}
+            <div className="w-full border-t pt-3">
+              <div className="grid grid-cols-3 gap-2">
+                <MiniRing 
+                  progress={timeProgress.summerProgress} 
+                  label="假期进度"
+                  size={48}
+                  strokeWidth={3}
+                />
+                <MiniRing 
+                  progress={timeProgress.weekRemaining} 
+                  label="本周剩余"
+                  size={48}
+                  strokeWidth={3}
+                />
+                <MiniRing 
+                  progress={timeProgress.dayRemaining} 
+                  label="今日剩余"
+                  size={48}
+                  strokeWidth={3}
+                />
               </div>
             </div>
 
