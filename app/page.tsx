@@ -1,16 +1,34 @@
-export default function Home() {
+import { Dashboard } from "@/components/dashboard"
+import { getTodayTasks, getRelapseTracker, getTaskTemplates, getHistoryScores } from "@/lib/actions"
+import { getChicagoDate } from "@/lib/utils"
+
+export default async function Home() {
+  const chicagoDate = getChicagoDate()
+  const currentYear = chicagoDate.getFullYear()
+  
+  // 格式化日期字符串（在服务端完成，避免水合不匹配）
+  const todayStr = chicagoDate.toLocaleDateString("zh-CN", { 
+    month: "long", 
+    day: "numeric",
+    weekday: "long",
+    timeZone: "America/Chicago"
+  })
+  
+  const [tasks, relapseTracker, templates, historyScores] = await Promise.all([
+    getTodayTasks(),
+    getRelapseTracker(),
+    getTaskTemplates(),
+    getHistoryScores(currentYear),
+  ])
+
   return (
-    <div className="flex min-h-screen items-center justify-center font-sans">
-      <main className="flex w-full max-w-3xl flex-col items-center gap-8 px-6 py-16 text-center sm:items-start sm:text-left">
-        <div className="flex flex-col gap-4">
-          <h1 className="text-4xl font-bold tracking-tight">
-            Project Refactor
-          </h1>
-          <p className="max-w-md text-lg text-muted-foreground">
-            To get started, send a prompt or modify this page directly.
-          </p>
-        </div>
-      </main>
-    </div>
-  );
+    <Dashboard 
+      tasks={tasks} 
+      relapseTracker={relapseTracker} 
+      templates={templates}
+      historyScores={historyScores}
+      todayStr={todayStr}
+      currentYear={currentYear}
+    />
+  )
 }
