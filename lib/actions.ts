@@ -230,37 +230,46 @@ export async function deleteTaskTemplate(id: string) {
   return { success: true }
 }
 
-// 获取自控追踪器
+// 获取鹿管追踪器
 export async function getRelapseTracker() {
   const supabase = await createClient()
   const weekStart = getWeekStart()
   
-  const { data, error } = await supabase
+  // 先尝试查询现有记录
+  const { data: existing } = await supabase
     .from("relapse_tracker")
     .select("*")
     .eq("week_start", weekStart)
     .single()
   
-  if (error && error.code !== "PGRST116") {
-    console.error("Error fetching relapse tracker:", error)
+  if (existing) {
+    return existing
   }
   
-  if (!data) {
-    const { data: newTracker, error: insertError } = await supabase
+  // 如果不存在，创建新记录
+  const { data: newTracker, error: insertError } = await supabase
+    .from("relapse_tracker")
+    .insert({ count: 0, week_start: weekStart })
+    .select()
+    .single()
+  
+  if (insertError) {
+    // 如果插入失败（可能是并发插入导致），再次查询
+    const { data: retryData } = await supabase
       .from("relapse_tracker")
-      .insert({ count: 0, week_start: weekStart })
-      .select()
+      .select("*")
+      .eq("week_start", weekStart)
       .single()
     
-    if (insertError) {
-      console.error("Error creating relapse tracker:", insertError)
-      return { id: "", count: 0, week_start: weekStart }
+    if (retryData) {
+      return retryData
     }
     
-    return newTracker
+    console.error("Error creating relapse tracker:", insertError)
+    return { id: "", count: 0, week_start: weekStart, created_at: "", updated_at: "" }
   }
   
-  return data
+  return newTracker
 }
 
 // 切换任务完成状态

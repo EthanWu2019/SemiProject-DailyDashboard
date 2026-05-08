@@ -339,8 +339,12 @@ export function Dashboard({
     <div className="h-screen flex flex-col p-4 md:p-6 max-w-7xl mx-auto">
       {/* 顶部栏 */}
       <header className="flex items-center justify-between mb-4 flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Summer Level-Up</h1>
+        <div className="flex items-center gap-4">
+          <img 
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/FullLogo_NoBuffer-Photoroom-iq5y9MePI66aeBEGDe6R9qsbM5zGNb.png" 
+            alt="Project Refactor" 
+            className="h-8 dark:invert"
+          />
           <p className="text-sm text-muted-foreground">
             {todayStr} · 距离开学还有 <span className="font-medium text-primary">{timeProgress.daysUntilSchool}</span> 天
           </p>
@@ -350,7 +354,7 @@ export function Dashboard({
         </div>
       </header>
 
-      {/* 主内容��：左侧进度常驻 + 右侧切换 */}
+      {/* 主内容��：��侧进度常驻 + 右侧切换 */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
         {/* 左侧统计面板 - 常驻 */}
         <Card className="md:col-span-1 flex flex-col">
@@ -411,7 +415,7 @@ export function Dashboard({
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm font-medium">本周自律</span>
+                  <span className="text-sm font-medium">本周鹿管</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button 
