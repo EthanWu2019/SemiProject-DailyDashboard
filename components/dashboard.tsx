@@ -154,14 +154,15 @@ export function Dashboard({
   }, [fetchQuote])
 
   // 计算分数和进度 - 满分固定为100，可以溢出
-  const { totalPoints, earnedPoints, penalty, progress, finalScore } = useMemo(() => {
+  const { totalPoints, earnedPoints, bonusPoints, penalty, progress, finalScore } = useMemo(() => {
     const total = tasks.reduce((sum, t) => sum + t.points, 0)
     const earned = tasks.filter(t => t.completed).reduce((sum, t) => sum + t.points, 0)
+    const bonus = tasks.reduce((sum, t) => sum + (t.bonus_points || 0), 0)
     const pen = calculatePenalty(tracker.count)
-    const final = Math.max(0, earned - pen)
+    const final = Math.max(0, earned + bonus - pen)
     // 满分固定为100，进度最高100%
     const prog = Math.min(100, final)
-    return { totalPoints: total, earnedPoints: earned, penalty: pen, progress: prog, finalScore: final }
+    return { totalPoints: total, earnedPoints: earned, bonusPoints: bonus, penalty: pen, progress: prog, finalScore: final }
   }, [tasks, tracker.count])
 
   const calendarData = useMemo(() => generateCalendarData(currentYear, scores), [scores, currentYear])
@@ -377,9 +378,14 @@ export function Dashboard({
                 <div className="text-lg font-bold">
                   {finalScore} <span className="text-xs font-normal text-muted-foreground">/ 100</span>
                 </div>
+                {bonusPoints > 0 && (
+                  <div className="text-xs text-green-500">
+                    昨日溢出 +{bonusPoints} 分
+                  </div>
+                )}
                 {finalScore > 100 && (
                   <div className="text-xs text-primary">
-                    溢出 +{finalScore - 100} 分
+                    今日溢出 +{finalScore - 100} 分
                   </div>
                 )}
                 {penalty > 0 && (
@@ -414,12 +420,19 @@ export function Dashboard({
               </div>
             </div>
 
-            {/* 自律追踪器 */}
+            {/* 鹿管追踪器 */}
             <div className="w-full border-t pt-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-orange-500" />
                   <span className="text-sm font-medium">本周鹿管</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    Math.max(0, 2 - tracker.count) > 0 
+                      ? "bg-green-500/20 text-green-600 dark:text-green-400" 
+                      : "bg-red-500/20 text-red-600 dark:text-red-400"
+                  }`}>
+                    剩余{Math.max(0, 2 - tracker.count)}次安全
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button 

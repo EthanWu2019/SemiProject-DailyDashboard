@@ -17,6 +17,22 @@ function getWeekStart() {
   return new Date(chicagoTime.setDate(diff)).toISOString().split("T")[0]
 }
 
+// 获取昨日溢出积分
+async function getYesterdayOverflowBonus(supabase: any): Promise<number> {
+  const today = getChicagoDateStr()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = yesterday.toISOString().split("T")[0]
+  
+  const { data } = await supabase
+    .from("daily_records")
+    .select("overflow_bonus")
+    .eq("date", yesterdayStr)
+    .single()
+  
+  return data?.overflow_bonus || 0
+}
+
 // 获取今日任务
 export async function getTodayTasks(): Promise<Task[]> {
   const supabase = await createClient()
@@ -35,6 +51,9 @@ export async function getTodayTasks(): Promise<Task[]> {
   
   // 如果今天没有任务，从模板创建
   if (!data || data.length === 0) {
+    // 获取昨日溢出积分
+    const bonusPoints = await getYesterdayOverflowBonus(supabase)
+    
     // 获取所有每日任务模板
     const { data: templates } = await supabase
       .from("task_templates")
@@ -61,6 +80,7 @@ export async function getTodayTasks(): Promise<Task[]> {
         date: today,
         task_type: "daily",
         target_date: null,
+        bonus_points: index === 0 ? bonusPoints : 0, // 溢出积分加到第一个任务
       }))
     } else {
       // 模板表为空，先创建默认模板
@@ -85,6 +105,7 @@ export async function getTodayTasks(): Promise<Task[]> {
         date: today,
         task_type: "daily",
         target_date: null,
+        bonus_points: index === 0 ? bonusPoints : 0, // 溢出积分加到第一个任务
       }))
     }
     
@@ -501,6 +522,9 @@ export async function saveDailyRecord(date: string) {
   const penalty = calculatePenalty(relapseCount)
   const finalScore = Math.max(0, earnedPoints - penalty)
   
+  // 计算溢出积分（超过100分的部分的一半，向下取整）
+  const overflowBonus = finalScore > 100 ? Math.floor((finalScore - 100) / 2) : 0
+  
   const { error } = await supabase
     .from("daily_records")
     .insert({
@@ -510,6 +534,7 @@ export async function saveDailyRecord(date: string) {
       relapse_count: relapseCount,
       penalty,
       final_score: finalScore,
+      overflow_bonus: overflowBonus,
     })
   
   if (error) {
@@ -517,7 +542,7 @@ export async function saveDailyRecord(date: string) {
     return { success: false }
   }
   
-  return { success: true }
+  return { success: true, overflowBonus }
 }
 
 // 检查并结算前一天（页面加载时调用）
