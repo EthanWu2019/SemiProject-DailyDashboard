@@ -63,7 +63,19 @@ export async function getTodayTasks(): Promise<Task[]> {
         target_date: null,
       }))
     } else {
-      // 使用默认任务
+      // 模板表为空，先创建默认模板
+      const defaultTemplates = DEFAULT_TASKS.map((task, index) => ({
+        name: task.name,
+        description: task.description,
+        points: task.points,
+        task_type: "daily" as const,
+        target_date: null,
+        sort_order: index,
+      }))
+      
+      await supabase.from("task_templates").insert(defaultTemplates)
+      
+      // 然后创建今日任务
       tasksToCreate = DEFAULT_TASKS.map((task, index) => ({
         name: task.name,
         description: task.description,
