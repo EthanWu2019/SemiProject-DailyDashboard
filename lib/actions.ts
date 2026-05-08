@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { DEFAULT_TASKS, type Task, type DailyScore } from "./types"
 
-// 获取芝加哥时间的日期 (凌晨3点刷新)
-function getChicagoDate() {
+// 获取芝加哥时间的 Date 对象（用于服务端渲染日期字符串）
+export function getChicagoDate(): Date {
   const now = new Date()
   // 转换为芝加哥时间
   const chicagoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }))
@@ -13,7 +13,12 @@ function getChicagoDate() {
   if (chicagoTime.getHours() < 3) {
     chicagoTime.setDate(chicagoTime.getDate() - 1)
   }
-  return chicagoTime.toISOString().split("T")[0]
+  return chicagoTime
+}
+
+// 获取芝加哥时间的日期字符串 (凌晨3点刷新)
+function getChicagoDateStr(): string {
+  return getChicagoDate().toISOString().split("T")[0]
 }
 
 // 获取本周一的日期（芝加哥时间）
@@ -31,7 +36,7 @@ function getWeekStart() {
 // 获取今日任务
 export async function getTodayTasks(): Promise<Task[]> {
   const supabase = await createClient()
-  const today = getChicagoDate()
+  const today = getChicagoDateStr()
   
   const { data, error } = await supabase
     .from("tasks")
@@ -301,7 +306,7 @@ export async function updateRelapseCount(trackerId: string, count: number) {
 // 重置今日所有任务
 export async function resetAllTasks() {
   const supabase = await createClient()
-  const today = getChicagoDate()
+  const today = getChicagoDateStr()
   
   const { error } = await supabase
     .from("tasks")

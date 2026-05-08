@@ -41,6 +41,8 @@ interface DashboardProps {
   relapseTracker: RelapseTracker
   templates: TaskTemplate[]
   historyScores: DailyScore[]
+  todayStr: string
+  currentYear: number
 }
 
 // 计算惩罚分数
@@ -105,7 +107,9 @@ export function Dashboard({
   tasks: initialTasks, 
   relapseTracker: initialTracker,
   templates: initialTemplates,
-  historyScores: initialScores
+  historyScores: initialScores,
+  todayStr,
+  currentYear,
 }: DashboardProps) {
   const [tasks, setTasks] = useState(initialTasks)
   const [tracker, setTracker] = useState(initialTracker)
@@ -135,13 +139,6 @@ export function Dashboard({
     return { totalPoints: total, earnedPoints: earned, penalty: pen, progress: prog }
   }, [tasks, tracker.count])
 
-  const today = new Date().toLocaleDateString("zh-CN", { 
-    month: "long", 
-    day: "numeric",
-    weekday: "long"
-  })
-
-  const currentYear = new Date().getFullYear()
   const calendarData = useMemo(() => generateCalendarData(currentYear, scores), [scores, currentYear])
 
   const handleToggle = (task: Task) => {
@@ -254,7 +251,7 @@ export function Dashboard({
       <header className="flex items-center justify-between mb-4 flex-shrink-0">
         <div>
           <h1 className="text-xl font-bold text-foreground">Summer Level-Up</h1>
-          <p className="text-sm text-muted-foreground">{today}</p>
+          <p className="text-sm text-muted-foreground">{todayStr}</p>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />

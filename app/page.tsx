@@ -1,8 +1,17 @@
 import { Dashboard } from "@/components/dashboard"
-import { getTodayTasks, getRelapseTracker, getTaskTemplates, getHistoryScores } from "@/lib/actions"
+import { getTodayTasks, getRelapseTracker, getTaskTemplates, getHistoryScores, getChicagoDate } from "@/lib/actions"
 
 export default async function Home() {
-  const currentYear = new Date().getFullYear()
+  const chicagoDate = getChicagoDate()
+  const currentYear = chicagoDate.getFullYear()
+  
+  // 格式化日期字符串（在服务端完成，避免水合不匹配）
+  const todayStr = chicagoDate.toLocaleDateString("zh-CN", { 
+    month: "long", 
+    day: "numeric",
+    weekday: "long",
+    timeZone: "America/Chicago"
+  })
   
   const [tasks, relapseTracker, templates, historyScores] = await Promise.all([
     getTodayTasks(),
@@ -17,6 +26,8 @@ export default async function Home() {
       relapseTracker={relapseTracker} 
       templates={templates}
       historyScores={historyScores}
+      todayStr={todayStr}
+      currentYear={currentYear}
     />
   )
 }
