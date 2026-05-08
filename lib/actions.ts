@@ -318,6 +318,87 @@ export async function resetAllTasks() {
   return { success: true }
 }
 
+// 同步今日任务（根据模板重新生成，保留已完成状态）
+export async function syncTodayTasks() {
+  const supabase = await createClient()
+  const today = getChicagoDateStr()
+  
+  // 获取当前今日任务及其完成状态
+  const { data: currentTasks } = await supabase
+    .from("tasks")
+    .select("name, completed")
+    .eq("date", today)
+  
+  const completedMap = new Map(
+    currentTasks?.map(t => [t.name, t.completed]) || []
+  )
+  
+  // 删除今日所有任务
+  await supabase.from("tasks").delete().eq("date", today)
+  
+  // 获取所有每日任务模板
+  const { data: templates } = await supabase
+    .from("task_templates")
+    .select("*")
+    .eq("task_type", "daily")
+    .order("sort_order", { ascending: true })
+  
+  // 获取今天需要完成的一次性任务
+  const { data: onceTasks } = await supabase
+    .from("task_templates")
+    .select("*")
+    .eq("task_type", "once")
+    .eq("target_date", today)
+  
+  let tasksToCreate: any[] = []
+  
+  if (templates && templates.length > 0) {
+    tasksToCreate = templates.map((t, index) => ({
+      name: t.name,
+      description: t.description,
+      points: t.points,
+      completed: completedMap.get(t.name) || false, // 保留已完成状态
+      sort_order: index,
+      date: today,
+      task_type: "daily",
+      target_date: null,
+    }))
+  }
+  
+  // 添加一次性任务
+  if (onceTasks && onceTasks.length > 0) {
+    const onceTasksToAdd = onceTasks.map((t, index) => ({
+      name: t.name,
+      description: t.description,
+      points: t.points,
+      completed: completedMap.get(t.name) || false,
+      sort_order: tasksToCreate.length + index,
+      date: today,
+      task_type: "once",
+      target_date: t.target_date,
+    }))
+    tasksToCreate = [...tasksToCreate, ...onceTasksToAdd]
+  }
+  
+  if (tasksToCreate.length > 0) {
+    const { data: newTasks, error } = await supabase
+      .from("tasks")
+      .insert(tasksToCreate)
+      .select()
+    
+    if (error) {
+      console.error("Error syncing tasks:", error)
+      return { success: false, tasks: [] }
+    }
+    
+    revalidatePath("/")
+    return { success: true, tasks: newTasks || [] }
+  }
+  
+  revalidatePath("/")
+  return { success: true, tasks: [] }
+}
+
 // 获取历史得分数据（用于日历视图）
 export async function getHistoryScores(year: number): Promise<DailyScore[]> {
   const supabase = await createClient()
