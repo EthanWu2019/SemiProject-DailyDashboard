@@ -42,6 +42,7 @@ interface DashboardProps {
   templates: TaskTemplate[]
   historyScores: DailyScore[]
   statistics: Statistics
+  settledPenalty: number
   todayStr: string
   currentYear: number
 }
@@ -112,6 +113,7 @@ export function Dashboard({
   templates: initialTemplates,
   historyScores: initialScores,
   statistics,
+  settledPenalty,
   todayStr,
   currentYear,
 }: DashboardProps) {
@@ -154,16 +156,19 @@ export function Dashboard({
   }, [fetchQuote])
 
   // 计算分数和进度 - 满分固定为100，可以溢出
+  // 惩罚只计算今天新增的部分（总惩罚 - 已结算的惩罚）
   const { totalPoints, earnedPoints, bonusPoints, penalty, progress, finalScore } = useMemo(() => {
     const total = tasks.reduce((sum, t) => sum + t.points, 0)
     const earned = tasks.filter(t => t.completed).reduce((sum, t) => sum + t.points, 0)
     const bonus = tasks.reduce((sum, t) => sum + (t.bonus_points || 0), 0)
-    const pen = calculatePenalty(tracker.count)
+    const totalPen = calculatePenalty(tracker.count)
+    // 今天的惩罚 = 当前应扣惩罚 - 本周已结算的惩罚
+    const pen = Math.max(0, totalPen - settledPenalty)
     const final = Math.max(0, earned + bonus - pen)
     // 满分固定为100，进度最高100%
     const prog = Math.min(100, final)
     return { totalPoints: total, earnedPoints: earned, bonusPoints: bonus, penalty: pen, progress: prog, finalScore: final }
-  }, [tasks, tracker.count])
+  }, [tasks, tracker.count, settledPenalty])
 
   const calendarData = useMemo(() => generateCalendarData(currentYear, scores), [scores, currentYear])
 

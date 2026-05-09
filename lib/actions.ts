@@ -33,6 +33,26 @@ async function getYesterdayOverflowBonus(supabase: any): Promise<number> {
   return data?.overflow_bonus || 0
 }
 
+// 获取本周已结算的惩罚总和（用于计算今天还需扣的惩罚）
+export async function getSettledPenalty(): Promise<number> {
+  const supabase = await createClient()
+  const weekStart = getWeekStart()
+  const today = getChicagoDateStr()
+  
+  // 获取本周已结算的所有惩罚
+  const { data } = await supabase
+    .from("daily_records")
+    .select("penalty")
+    .gte("date", weekStart)
+    .lt("date", today)
+  
+  if (!data || data.length === 0) {
+    return 0
+  }
+  
+  return data.reduce((sum, r) => sum + (r.penalty || 0), 0)
+}
+
 // 获取今日任务
 export async function getTodayTasks(): Promise<Task[]> {
   const supabase = await createClient()
