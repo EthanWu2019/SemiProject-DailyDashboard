@@ -3,6 +3,7 @@ export interface Task {
   name: string
   description: string | null
   points: number
+  bonus_points: number
   completed: boolean
   sort_order: number
   date: string
@@ -46,6 +47,7 @@ export interface DailyRecord {
   relapse_count: number
   penalty: number
   final_score: number
+  overflow_bonus: number
   created_at: string
 }
 
